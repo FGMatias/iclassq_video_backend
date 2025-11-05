@@ -48,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponseDTO.builder()
                 .token(token)
                 .type("Bearer")
+                .userId(user.getId())
                 .username(user.getUsername())
                 .name(user.getName())
                 .email(user.getEmail())

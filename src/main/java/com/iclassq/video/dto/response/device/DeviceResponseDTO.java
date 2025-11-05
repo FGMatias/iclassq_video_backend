@@ -13,14 +13,20 @@ import java.time.LocalDateTime;
 @Builder
 public class DeviceResponseDTO {
     private Integer id;
-    private Integer userId;
-    private String username;
-    private Integer areaId;
-    private String areaName;
-    private String branchName;
-    private String companyName;
     private String deviceName;
     private String deviceIdentifier;
+    private String deviceUsername;
+    private String deviceType;
+    private Boolean isActive;
+
+    private Integer currentAreaId;
+    private String currentAreaName;
+    private String currentBranchName;
+    private String currentCompanyName;
+    private LocalDateTime assignedAt;
+
+    private String configuredByUsername;
+    private LocalDateTime lastLogin;
+    private LocalDateTime lastSync;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

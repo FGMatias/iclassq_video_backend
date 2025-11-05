@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DeviceAreaRepository extends JpaRepository<DeviceArea, Integer> {
@@ -13,11 +14,19 @@ public interface DeviceAreaRepository extends JpaRepository<DeviceArea, Integer>
             "JOIN FETCH da.area a " +
             "JOIN FETCH a.branch b " +
             "JOIN FETCH b.company c " +
-            "JOIN FETCH da.user u " +
-            "WHERE da.user.id = :userId")
-    List<DeviceArea> findByUserIdWithDetails(Integer userId);
+            "WHERE da.device.id = :deviceId AND da.removedAt IS NULL")
+    Optional<DeviceArea> findCurrentAssignment(Integer deviceId);
 
-    List<DeviceArea> findByArea_Id(Integer areaId);
-    List<DeviceArea> findByUser_Id(Integer userId);
-    List<DeviceArea> findByDeviceIdentifier(String deviceIdentifier);
+    @Query("SELECT da FROM DeviceArea da " +
+            "JOIN FETCH da.area a " +
+            "JOIN FETCH da.assignedBy " +
+            "WHERE da.device.id = :deviceId " +
+            "ORDER BY da.assignedAt DESC")
+    List<DeviceArea> findByDeviceIdOrderByAssignedAtDesc(Integer deviceId);
+
+    @Query("SELECT da FROM DeviceArea da " +
+            "JOIN FETCH da.device d " +
+            "WHERE da.area.id = :areaId " +
+            "ORDER BY da.assignedAt DESC")
+    List<DeviceArea> findByAreaIdOrderByAssignedAtDesc(Integer areaId);
 }

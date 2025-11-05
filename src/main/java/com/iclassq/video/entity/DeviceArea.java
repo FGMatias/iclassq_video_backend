@@ -18,23 +18,36 @@ public class DeviceArea {
     @Column(name = "id")
     private Integer id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "device_id", referencedColumnName = "id")
+    private Device device;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "area_id", referencedColumnName = "id")
     private Area area;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    private User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_by_user_id", referencedColumnName = "id")
+    private User assignedBy;
 
-    @Column(name = "device_name")
-    private String deviceName;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "removed_by_user_id", referencedColumnName = "id")
+    private User removedBy;
 
-    @Column(name = "device_identifier")
-    private String deviceIdentifier;
+    @Column(name = "assigned_at")
+    private LocalDateTime assignedAt;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @Column(name = "removed_at")
+    private LocalDateTime removedAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "is_current", insertable = false, updatable = false)
+    private Boolean isCurrent;
+
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
+    @PrePersist
+    protected void onCreate() {
+        assignedAt = LocalDateTime.now();
+    }
 }

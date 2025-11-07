@@ -1,5 +1,7 @@
 package com.iclassq.video.service;
 
+import com.iclassq.video.dto.request.user.CreateBranchAdminDTO;
+import com.iclassq.video.dto.request.user.CreateCompanyAdminDTO;
 import com.iclassq.video.dto.request.user.CreateUserDTO;
 import com.iclassq.video.dto.request.user.UpdateUserDTO;
 import com.iclassq.video.dto.response.user.UserResponseDTO;
@@ -8,6 +10,8 @@ import java.util.List;
 
 public interface UserService {
     UserResponseDTO create(CreateUserDTO dto);
+    UserResponseDTO createCompanyAdmin(CreateCompanyAdminDTO dto);
+    UserResponseDTO createBranchAdmin(CreateBranchAdminDTO dto);
     UserResponseDTO findById(Integer id);
     List<UserResponseDTO> findAll();
     UserResponseDTO update(Integer id, UpdateUserDTO dto);

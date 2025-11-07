@@ -1,21 +1,22 @@
 package com.iclassq.video.service.impl;
 
+import com.iclassq.video.dto.request.user.CreateBranchAdminDTO;
+import com.iclassq.video.dto.request.user.CreateCompanyAdminDTO;
 import com.iclassq.video.dto.request.user.CreateUserDTO;
 import com.iclassq.video.dto.request.user.UpdateUserDTO;
 import com.iclassq.video.dto.response.user.UserResponseDTO;
-import com.iclassq.video.entity.Role;
-import com.iclassq.video.entity.User;
+import com.iclassq.video.entity.*;
 import com.iclassq.video.exception.DuplicateEntityException;
 import com.iclassq.video.exception.ResourceNotFoundException;
 import com.iclassq.video.mapper.UserMapper;
-import com.iclassq.video.repository.RoleRepository;
-import com.iclassq.video.repository.UserRepository;
+import com.iclassq.video.repository.*;
 import com.iclassq.video.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -23,6 +24,10 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
+    private final BranchRepository branchRepository;
+    private final UserCompanyRepository userCompanyRepository;
+    private final UserBranchRepository userBranchRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
@@ -45,6 +50,96 @@ public class UserServiceImpl implements UserService {
 
         User user = userMapper.toEntity(dto, role, hashedPassword);
         User savedUser = userRepository.save(user);
+
+        return userMapper.toResponseDTO(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserResponseDTO createCompanyAdmin(CreateCompanyAdminDTO dto) {
+        if (userRepository.existsByUsername(dto.getUsername())) {
+            throw new DuplicateEntityException("Usuario", "username", dto.getUsername());
+        }
+
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new DuplicateEntityException("Usuario", "email", dto.getEmail());
+        }
+
+        Company company = companyRepository.findById(dto.getCompanyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa", dto.getCompanyId()));
+
+        Role role = roleRepository.findById(2)
+                .orElseThrow(() -> new ResourceNotFoundException("Rol ADMINISTRADOR_EMPRESA no encontrado"));
+
+        String hashedPassword = passwordEncoder.encode(dto.getPassword());
+
+        User user = User.builder()
+                .role(role)
+                .username(dto.getUsername())
+                .password(hashedPassword)
+                .name(dto.getName())
+                .paternalSurname(dto.getPaternalSurname())
+                .maternalSurname(dto.getMaternalSurname())
+                .documentNumber(dto.getDocumentNumber())
+                .email(dto.getEmail())
+                .phone(dto.getPhone())
+                .isActive(true)
+                .build();
+
+        User savedUser = userRepository.save(user);
+
+        UserCompany userCompany = UserCompany.builder()
+                .user(savedUser)
+                .company(company)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        userCompanyRepository.save(userCompany);
+
+        return userMapper.toResponseDTO(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserResponseDTO createBranchAdmin(CreateBranchAdminDTO dto) {
+        if (userRepository.existsByUsername(dto.getUsername())) {
+            throw new DuplicateEntityException("Usuario", "username", dto.getUsername());
+        }
+
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new DuplicateEntityException("Usuario", "email", dto.getEmail());
+        }
+
+        Branch branch = branchRepository.findById(dto.getBranchId())
+                .orElseThrow(() -> new ResourceNotFoundException("Sucursal", dto.getBranchId()));
+
+        Role role = roleRepository.findById(3)
+                .orElseThrow(() -> new ResourceNotFoundException("Rol ADMINISTRADOR_SUCURSAL no encontrado"));
+
+        String hashedPassword = passwordEncoder.encode(dto.getPassword());
+
+        User user = User.builder()
+                .role(role)
+                .username(dto.getUsername())
+                .password(hashedPassword)
+                .name(dto.getName())
+                .paternalSurname(dto.getPaternalSurname())
+                .maternalSurname(dto.getMaternalSurname())
+                .documentNumber(dto.getDocumentNumber())
+                .email(dto.getEmail())
+                .phone(dto.getPhone())
+                .isActive(true)
+                .build();
+
+        User savedUser = userRepository.save(user);
+
+        UserBranch userBranch = UserBranch.builder()
+                .user(savedUser)
+                .branch(branch)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        userBranchRepository.save(userBranch);
 
         return userMapper.toResponseDTO(savedUser);
     }

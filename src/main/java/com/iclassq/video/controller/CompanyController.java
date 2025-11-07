@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,24 +20,28 @@ public class CompanyController {
     private final CompanyService companyService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMINISTRADOR')")
     public ResponseEntity<List<CompanyResponseDTO>> findAll() {
         List<CompanyResponseDTO> response = companyService.findAll();
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMINISTRADOR')")
     public ResponseEntity<CompanyResponseDTO> findById(@PathVariable Integer id) {
         CompanyResponseDTO response = companyService.findById(id);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMINISTRADOR')")
     public ResponseEntity<CompanyResponseDTO> create(@RequestBody @Valid CreateCompanyDTO dto) {
         CompanyResponseDTO response = companyService.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMINISTRADOR')")
     public ResponseEntity<CompanyResponseDTO> update(
             @PathVariable Integer id,
             @RequestBody @Valid UpdateCompanyDTO dto
@@ -46,18 +51,21 @@ public class CompanyController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMINISTRADOR')")
     public ResponseEntity<CompanyResponseDTO> delete(@PathVariable Integer id) {
         companyService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/activate")
+    @PreAuthorize("hasAnyRole('SUPER_ADMINISTRADOR')")
     public ResponseEntity<Void> activate(@PathVariable Integer id) {
         companyService.activate(id);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}/deactivate")
+    @PreAuthorize("hasAnyRole('SUPER_ADMINISTRADOR')")
     public ResponseEntity<Void> deactivate(@PathVariable Integer id) {
         companyService.deactivate(id);
         return ResponseEntity.ok().build();

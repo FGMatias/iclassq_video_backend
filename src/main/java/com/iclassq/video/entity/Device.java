@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "device")
@@ -57,10 +58,20 @@ public class Device {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+
+        if (deviceIdentifier == null || deviceIdentifier.isEmpty()) {
+            deviceIdentifier = generateDeviceIdentifier();
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    private String generateDeviceIdentifier() {
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String uuid = UUID.randomUUID().toString().substring(0, 8);
+        return String.format("DEV-%s-%s", timestamp, uuid);
     }
 }

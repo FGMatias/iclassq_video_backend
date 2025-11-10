@@ -2,6 +2,7 @@ package com.iclassq.video.mapper;
 
 import com.iclassq.video.dto.request.user.CreateUserDTO;
 import com.iclassq.video.dto.request.user.UpdateUserDTO;
+import com.iclassq.video.dto.response.user.UserAuthResponseDTO;
 import com.iclassq.video.dto.response.user.UserResponseDTO;
 import com.iclassq.video.dto.response.user.UserSimpleDTO;
 import com.iclassq.video.entity.Role;
@@ -59,6 +60,19 @@ public class UserMapper {
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
+                .build();
+    }
+
+    public UserAuthResponseDTO userAuthResponseDTO(User user, String token) {
+        return UserAuthResponseDTO.builder()
+                .token(token)
+                .type("Bearer")
+                .id(user.getId())
+                .username(user.getUsername())
+                .name(user.getName())
+                .email(user.getEmail())
+                .roleId(user.getRole().getId())
+                .roleName(user.getRole().getName())
                 .build();
     }
 

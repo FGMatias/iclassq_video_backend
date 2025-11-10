@@ -1,17 +1,24 @@
 package com.iclassq.video.service.impl;
 
+import com.iclassq.video.dto.request.auth.LoginDTO;
 import com.iclassq.video.dto.request.user.CreateBranchAdminDTO;
 import com.iclassq.video.dto.request.user.CreateCompanyAdminDTO;
 import com.iclassq.video.dto.request.user.CreateUserDTO;
 import com.iclassq.video.dto.request.user.UpdateUserDTO;
+import com.iclassq.video.dto.response.user.UserAuthResponseDTO;
 import com.iclassq.video.dto.response.user.UserResponseDTO;
 import com.iclassq.video.entity.*;
 import com.iclassq.video.exception.DuplicateEntityException;
 import com.iclassq.video.exception.ResourceNotFoundException;
 import com.iclassq.video.mapper.UserMapper;
 import com.iclassq.video.repository.*;
+import com.iclassq.video.security.JwtService;
 import com.iclassq.video.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +38,24 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> findAll() {
+        List<User> users = userRepository.findAll();
+        return userMapper.toResponseDTOList(users);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponseDTO findById(Integer id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario", id));
+
+        return userMapper.toResponseDTO(user);
+    }
 
     @Override
     @Transactional
@@ -145,22 +170,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public UserResponseDTO findById(Integer id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario", id));
-
-        return userMapper.toResponseDTO(user);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<UserResponseDTO> findAll() {
-        List<User> users = userRepository.findAll();
-        return userMapper.toResponseDTOList(users);
-    }
-
-    @Override
     @Transactional
     public UserResponseDTO update(Integer id, UpdateUserDTO dto) {
         User user = userRepository.findById(id)
@@ -227,5 +236,28 @@ public class UserServiceImpl implements UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    @Override
+    public UserAuthResponseDTO login(LoginDTO dto) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        dto.getUsername(),
+                        dto.getPassword()
+                )
+        );
+
+        User user = userRepository.findByUsername(dto.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + dto.getUsername()));
+
+        String token = jwtService.generateToken(
+                new org.springframework.security.core.userdetails.User(
+                        user.getUsername(),
+                        user.getPassword(),
+                        authentication.getAuthorities()
+                )
+        );
+
+        return userMapper.userAuthResponseDTO(user, token);
     }
 }

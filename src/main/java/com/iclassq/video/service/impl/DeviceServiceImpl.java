@@ -1,9 +1,9 @@
 package com.iclassq.video.service.impl;
 
 import com.iclassq.video.dto.request.device.DeviceAssignAreaDTO;
-import com.iclassq.video.dto.request.device.RegisterDeviceDTO;
+import com.iclassq.video.dto.request.device.CreateDeviceDTO;
+import com.iclassq.video.dto.request.device.UpdateDeviceDTO;
 import com.iclassq.video.dto.response.device.DeviceAuthResponseDTO;
-import com.iclassq.video.dto.response.device.DeviceRegisterResponseDTO;
 import com.iclassq.video.dto.response.device.DeviceResponseDTO;
 import com.iclassq.video.entity.*;
 import com.iclassq.video.exception.DeviceNotAssignedException;
@@ -37,8 +37,28 @@ public class DeviceServiceImpl implements DeviceService {
     private final DeviceMapper deviceMapper;
 
     @Override
+    @Transactional(readOnly = true)
+    public List<DeviceResponseDTO> findAll() {
+        List<Device> devices = deviceRepository.findAll();
+        return deviceMapper.toResponseDTOList(devices);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeviceResponseDTO findById(Integer id) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
+
+        return deviceMapper.toResponseDTO(device);
+    }
+
+    @Override
     @Transactional
-    public DeviceRegisterResponseDTO register(RegisterDeviceDTO dto, Integer adminUserId) {
+    public DeviceResponseDTO create(CreateDeviceDTO dto, Integer adminUserId) {
+        if (deviceRepository.existsByDeviceUsername(dto.getDeviceUsername())) {
+            throw new DuplicateEntityException("Dispositivo", "username", dto.getDeviceUsername());
+        }
+
         Area area = areaRepository.findById(dto.getAreaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Área", dto.getAreaId()));
 
@@ -47,10 +67,6 @@ public class DeviceServiceImpl implements DeviceService {
 
         DeviceType deviceType = deviceTypeRepository.findById(dto.getDeviceTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de dispositivo", dto.getDeviceTypeId()));
-
-        if (deviceRepository.existsByDeviceUsername(dto.getDeviceUsername())) {
-            throw new DuplicateEntityException("Dispositivo", "username", dto.getDeviceUsername());
-        }
 
         String hashedPassword = passwordEncoder.encode(dto.getDevicePassword());
 
@@ -66,11 +82,119 @@ public class DeviceServiceImpl implements DeviceService {
 
         deviceAreaRepository.save(assignment);
 
-        return deviceMapper.toRegisterResponseDTO(
-                savedDevice,
-                dto.getDevicePassword(),
-                area
-        );
+        return deviceMapper.toResponseDTO(savedDevice);
+    }
+
+    @Override
+    public DeviceResponseDTO update(Integer id, UpdateDeviceDTO dto) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
+
+        if (dto.getDeviceUsername() != null && !dto.getDeviceUsername().equals(device.getDeviceUsername())) {
+            if (deviceRepository.existsByDeviceUsername(dto.getDeviceUsername())) {
+                throw new DuplicateEntityException("Dispositivo", "username", dto.getDeviceUsername());
+            }
+        }
+
+        DeviceType deviceType = deviceTypeRepository.findById(dto.getDeviceTypeId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Tipo de dispositivo", dto.getDeviceTypeId()));
+
+        deviceMapper.updateEntity(device, dto, deviceType);
+
+        Device updatedDevice = deviceRepository.save(device);
+
+        return deviceMapper.toResponseDTO(updatedDevice);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Integer id) {
+        if (!deviceRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Dispositivo", id);
+        }
+
+        deviceRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void reassign(Integer id, DeviceAssignAreaDTO dto, Integer adminUserId) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
+
+        Area newArea = areaRepository.findById(dto.getAreaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Área", dto.getAreaId()));
+
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario", adminUserId));
+
+        deviceAreaRepository.findCurrentAssignment(id)
+                .ifPresent(currentAssignment -> {
+                    currentAssignment.setRemovedAt(LocalDateTime.now());
+                    currentAssignment.setRemovedBy(admin);
+                    deviceAreaRepository.save(currentAssignment);
+                });
+
+        DeviceArea newAssignment = DeviceArea.builder()
+                .device(device)
+                .area(newArea)
+                .assignedBy(admin)
+                .notes(dto.getNotes())
+                .build();
+
+        deviceAreaRepository.save(newAssignment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeviceResponseDTO getDeviceWithCurrentArea(Integer id) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
+
+        DeviceArea currentAssignment = deviceAreaRepository
+                .findCurrentAssignment(id)
+                .orElse(null);
+
+        return deviceMapper.toResponseDTO(device, currentAssignment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DeviceArea> getHistory(Integer id) {
+        if (!deviceRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Dispositivo", id);
+        }
+
+        return deviceAreaRepository.findByDeviceIdOrderByAssignedAtDesc(id);
+    }
+
+    @Override
+    public void activate(Integer id) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
+
+        device.setIsActive(true);
+        deviceRepository.save(device);
+    }
+
+    @Override
+    @Transactional
+    public void deactivate(Integer id) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
+
+        device.setIsActive(false);
+        deviceRepository.save(device);
+    }
+
+    @Override
+    @Transactional
+    public void updateLastSync(Integer id) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
+
+        device.setLastSync(LocalDateTime.now());
+        deviceRepository.save(device);
     }
 
     @Override
@@ -110,77 +234,5 @@ public class DeviceServiceImpl implements DeviceService {
                 areaVideos,
                 token
         );
-    }
-
-    @Override
-    @Transactional
-    public void reassign(Integer deviceId, DeviceAssignAreaDTO dto, Integer adminUserId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", deviceId));
-
-        Area newArea = areaRepository.findById(dto.getAreaId())
-                .orElseThrow(() -> new ResourceNotFoundException("Área", dto.getAreaId()));
-
-        User admin = userRepository.findById(adminUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario", adminUserId));
-
-        deviceAreaRepository.findCurrentAssignment(deviceId)
-                .ifPresent(currentAssignment -> {
-                    currentAssignment.setRemovedAt(LocalDateTime.now());
-                    currentAssignment.setRemovedBy(admin);
-                    deviceAreaRepository.save(currentAssignment);
-                });
-
-        DeviceArea newAssignment = DeviceArea.builder()
-                .device(device)
-                .area(newArea)
-                .assignedBy(admin)
-                .notes(dto.getNotes())
-                .build();
-
-        deviceAreaRepository.save(newAssignment);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public DeviceResponseDTO getDeviceWithCurrentArea(Integer deviceId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", deviceId));
-
-        DeviceArea currentAssignment = deviceAreaRepository
-                .findCurrentAssignment(deviceId)
-                .orElse(null);
-
-        return deviceMapper.toResponseDTO(device, currentAssignment);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<DeviceArea> getHistory(Integer deviceId) {
-        if (!deviceRepository.existsById(deviceId)) {
-            throw new ResourceNotFoundException("Dispositivo", deviceId);
-        }
-
-        return deviceAreaRepository.findByDeviceIdOrderByAssignedAtDesc(deviceId);
-    }
-
-    @Override
-    @Transactional
-    public void deactivate(Integer deviceId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", deviceId));
-
-        device.setIsActive(false);
-        deviceRepository.save(device);
-    }
-
-    @Override
-    @Transactional
-    public void updateLastSync(Integer deviceId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", deviceId));
-
-        device.setLastSync(LocalDateTime.now());
-        deviceRepository.save(device);
     }
 }

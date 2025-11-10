@@ -1,9 +1,8 @@
 package com.iclassq.video.mapper;
 
 import com.iclassq.video.dto.request.device.CreateDeviceDTO;
-import com.iclassq.video.dto.request.device.RegisterDeviceDTO;
+import com.iclassq.video.dto.request.device.UpdateDeviceDTO;
 import com.iclassq.video.dto.response.device.DeviceAuthResponseDTO;
-import com.iclassq.video.dto.response.device.DeviceRegisterResponseDTO;
 import com.iclassq.video.dto.response.device.DeviceResponseDTO;
 import com.iclassq.video.dto.response.video.VideoSimpleDTO;
 import com.iclassq.video.entity.*;
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
 public class DeviceMapper {
 
     public Device toEntity(
-            RegisterDeviceDTO dto,
+            CreateDeviceDTO dto,
             DeviceType deviceType,
             User configuredBy,
             String hashedPassword
@@ -26,27 +25,9 @@ public class DeviceMapper {
                 .user(configuredBy)
                 .deviceType(deviceType)
                 .deviceName(dto.getDeviceName())
-                .deviceIdentifier(dto.getDeviceIdentifier())
                 .deviceUsername(dto.getDeviceUsername())
                 .devicePassword(hashedPassword)
                 .isActive(true)
-                .build();
-    }
-
-    public DeviceRegisterResponseDTO toRegisterResponseDTO(
-            Device device,
-            String rawPassword,
-            Area area
-    ) {
-        return DeviceRegisterResponseDTO.builder()
-                .id(device.getId())
-                .deviceName(device.getDeviceName())
-                .deviceUsername(device.getDeviceUsername())
-                .devicePassword(rawPassword)
-                .deviceType(device.getDeviceType().getName())
-                .areaId(area.getId())
-                .areaName(area.getName())
-                .message("Dispositivo registrado correctamente.")
                 .build();
     }
 
@@ -82,6 +63,32 @@ public class DeviceMapper {
         }
 
         return builder.build();
+    }
+
+    public DeviceResponseDTO toResponseDTO(Device device) {
+        return DeviceResponseDTO.builder()
+                .id(device.getId())
+                .deviceName(device.getDeviceName())
+                .deviceIdentifier(device.getDeviceIdentifier())
+                .deviceUsername(device.getDeviceUsername())
+                .deviceType(device.getDeviceType().getName())
+                .isActive(device.getIsActive())
+                .lastLogin(device.getLastLogin())
+                .lastSync(device.getLastSync())
+                .createdAt(device.getCreatedAt())
+                .configuredByUsername(device.getUser() != null ? device.getUser().getUsername() : null)
+                .build();
+    }
+
+    public void updateEntity(
+            Device device,
+            UpdateDeviceDTO dto,
+            DeviceType newDeviceType
+    ) {
+        if (dto.getDeviceUsername() != null) device.setDeviceUsername(dto.getDeviceUsername());
+        if (dto.getDeviceName() != null) device.setDeviceName(dto.getDeviceName());
+        if (newDeviceType != null) device.setDeviceType(newDeviceType);
+        if (dto.getIsActive() != null) device.setIsActive(dto.getIsActive());
     }
 
     public DeviceAuthResponseDTO toAuthResponseDTO(
@@ -129,4 +136,12 @@ public class DeviceMapper {
                 .lastSync(device.getLastSync())
                 .build();
     }
+
+    public List<DeviceResponseDTO> toResponseDTOList(List<Device> devices) {
+        return devices.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+
 }

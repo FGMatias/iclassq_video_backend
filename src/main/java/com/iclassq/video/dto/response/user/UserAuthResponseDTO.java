@@ -1,4 +1,4 @@
-package com.iclassq.video.dto.response.auth;
+package com.iclassq.video.dto.response.user;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AuthResponseDTO {
+public class UserAuthResponseDTO {
     private String token;
     private String type = "Bearer";
-    private Integer userId;
+    private Integer id;
     private String username;
     private String name;
     private String email;

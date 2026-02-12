@@ -1,0 +1,99 @@
+package com.iclass.video.mapper;
+
+import com.iclass.video.dto.request.user.CreateUserDTO;
+import com.iclass.video.dto.request.user.UpdateUserDTO;
+import com.iclass.video.dto.response.user.UserAuthResponseDTO;
+import com.iclass.video.dto.response.user.UserResponseDTO;
+import com.iclass.video.dto.response.user.UserSimpleDTO;
+import com.iclass.video.entity.Role;
+import com.iclass.video.entity.User;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Component
+public class UserMapper {
+
+    public User toEntity(
+            CreateUserDTO dto,
+            Role role,
+            String hashedPassword
+    ) {
+        return User.builder()
+                .role(role)
+                .username(dto.getUsername())
+                .password(hashedPassword)
+                .name(dto.getName())
+                .paternalSurname(dto.getPaternalSurname())
+                .maternalSurname(dto.getMaternalSurname())
+                .documentNumber(dto.getDocumentNumber())
+                .email(dto.getEmail())
+                .phone(dto.getPhone())
+                .isActive(true)
+                .build();
+    }
+
+    public void updateEntity(User user, UpdateUserDTO dto) {
+        if (dto.getUsername() != null) user.setUsername(dto.getUsername());
+        if (dto.getName() != null) user.setName(dto.getName());
+        if (dto.getPaternalSurname() != null) user.setPaternalSurname(dto.getPaternalSurname());
+        if (dto.getMaternalSurname() != null) user.setMaternalSurname(dto.getMaternalSurname());
+        if (dto.getDocumentNumber() != null) user.setDocumentNumber(dto.getDocumentNumber());
+        if (dto.getEmail() != null) user.setEmail(dto.getEmail());
+        if (dto.getPhone() != null) user.setPhone(dto.getPhone());
+        if (dto.getIsActive() != null) user.setIsActive(dto.getIsActive());
+    }
+
+    public UserResponseDTO toResponseDTO(User user) {
+        return UserResponseDTO.builder()
+                .id(user.getId())
+                .roleId(user.getRole().getId())
+                .roleName(user.getRole().getName())
+                .username(user.getUsername())
+                .name(user.getName())
+                .paternalSurname(user.getPaternalSurname())
+                .maternalSurname(user.getMaternalSurname())
+                .documentNumber(user.getDocumentNumber())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .isActive(user.getIsActive())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
+    }
+
+    public UserAuthResponseDTO userAuthResponseDTO(User user, String token) {
+        return UserAuthResponseDTO.builder()
+                .token(token)
+                .type("Bearer")
+                .id(user.getId())
+                .username(user.getUsername())
+                .name(user.getName())
+                .email(user.getEmail())
+                .roleId(user.getRole().getId())
+                .roleName(user.getRole().getName())
+                .build();
+    }
+
+    public UserSimpleDTO toSimpleDTO(User user) {
+        return UserSimpleDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .name(user.getName())
+                .email(user.getEmail())
+                .build();
+    }
+
+    public List<UserResponseDTO> toResponseDTOList(List<User> users) {
+        return users.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<UserSimpleDTO> toSimpleDTOList(List<User> users) {
+        return users.stream()
+                .map(this::toSimpleDTO)
+                .collect(Collectors.toList());
+    }
+}

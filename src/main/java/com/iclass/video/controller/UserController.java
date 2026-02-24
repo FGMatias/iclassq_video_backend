@@ -5,7 +5,7 @@ import com.iclass.video.dto.request.user.CreateBranchAdminDTO;
 import com.iclass.video.dto.request.user.CreateCompanyAdminDTO;
 import com.iclass.video.dto.request.user.CreateUserDTO;
 import com.iclass.video.dto.request.user.UpdateUserDTO;
-import com.iclassq.video.dto.request.user.*;
+import com.iclass.video.dto.request.user.*;
 import com.iclass.video.dto.response.user.UserResponseDTO;
 import com.iclass.video.service.UserService;
 import jakarta.validation.Valid;

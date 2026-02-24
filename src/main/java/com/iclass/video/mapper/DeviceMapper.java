@@ -96,7 +96,11 @@ public class DeviceMapper {
             Device device,
             DeviceArea currentAssignment,
             List<AreaVideo> areaVideos,
-            String token
+            String token,
+            Integer volume,
+            Integer syncInterval,
+            Boolean autoPlay,
+            Boolean loopPlaylist
     ) {
         Area area = currentAssignment.getArea();
         Branch branch = area.getBranch();
@@ -128,10 +132,10 @@ public class DeviceMapper {
                 .companyId(company.getId())
                 .companyName(company.getName())
                 .config(DeviceAuthResponseDTO.DeviceConfig.builder()
-                        .autoSyncInterval(21600)
-                        .autoPlay(true)
-                        .loopPlayList(true)
-                        .volume(80)
+                        .autoSyncInterval(syncInterval)
+                        .autoPlay(autoPlay)
+                        .loopPlayList(loopPlaylist)
+                        .volume(volume)
                         .build())
                 .playlist(playlist)
                 .lastSync(device.getLastSync())

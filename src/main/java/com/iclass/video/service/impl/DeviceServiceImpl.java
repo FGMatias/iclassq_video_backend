@@ -7,13 +7,14 @@ import com.iclass.video.dto.response.device.DeviceAuthResponseDTO;
 import com.iclass.video.dto.response.device.DeviceResponseDTO;
 import com.iclass.video.entity.*;
 import com.iclass.video.repository.*;
-import com.iclassq.video.entity.*;
+import com.iclass.video.entity.*;
 import com.iclass.video.exception.DeviceNotAssignedException;
 import com.iclass.video.exception.DuplicateEntityException;
 import com.iclass.video.exception.ResourceNotFoundException;
 import com.iclass.video.mapper.DeviceMapper;
-import com.iclassq.video.repository.*;
+import com.iclass.video.repository.*;
 import com.iclass.video.security.JwtService;
+import com.iclass.video.service.BranchConfigService;
 import com.iclass.video.service.DeviceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -37,6 +38,7 @@ public class DeviceServiceImpl implements DeviceService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final DeviceMapper deviceMapper;
+    private final BranchConfigService branchConfigService;
 
     @Override
     @Transactional(readOnly = true)
@@ -214,6 +216,13 @@ public class DeviceServiceImpl implements DeviceService {
                 .findCurrentAssignment(device.getId())
                 .orElseThrow(() -> new DeviceNotAssignedException(device.getId()));
 
+        Integer branchId = currentAssignment.getArea().getBranch().getId();
+
+        Integer volume = branchConfigService.getConfigValueAsInt(branchId, "device.default.volume");
+        Integer syncInterval = branchConfigService.getConfigValueAsInt(branchId, "device.sync.interval.seconds");
+        Boolean autoPlay = branchConfigService.getConfigValueAsBoolean(branchId, "device.auto.play");
+        Boolean loopPlaylist = branchConfigService.getConfigValueAsBoolean(branchId, "device.loop.playlist");
+
         device.setLastLogin(LocalDateTime.now());
         deviceRepository.save(device);
 
@@ -231,7 +240,11 @@ public class DeviceServiceImpl implements DeviceService {
                 device,
                 currentAssignment,
                 areaVideos,
-                token
+                token,
+                volume,
+                syncInterval,
+                autoPlay,
+                loopPlaylist
         );
     }
 

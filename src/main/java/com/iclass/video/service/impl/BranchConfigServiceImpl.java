@@ -8,6 +8,7 @@ import com.iclass.video.entity.BranchConfig;
 import com.iclass.video.entity.User;
 import com.iclass.video.enums.ConfigCategory;
 import com.iclass.video.enums.ConfigType;
+import com.iclass.video.event.BranchConfigChangedEvent;
 import com.iclass.video.exception.BadRequestException;
 import com.iclass.video.exception.ResourceNotFoundException;
 import com.iclass.video.mapper.BranchConfigMapper;
@@ -16,6 +17,7 @@ import com.iclass.video.repository.BranchRepository;
 import com.iclass.video.repository.UserRepository;
 import com.iclass.video.service.BranchConfigService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ public class BranchConfigServiceImpl implements BranchConfigService {
     private final BranchRepository branchRepository;
     private final UserRepository userRepository;
     private final BranchConfigMapper branchConfigMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -94,8 +97,19 @@ public class BranchConfigServiceImpl implements BranchConfigService {
             user = userRepository.findById(userId).orElse(null);
         }
 
+        Integer branchId = config.getBranch().getId();
+        String oldValue = config.getConfigValue();
+
         branchConfigMapper.updateEntity(config, dto, user);
         BranchConfig updatedConfig = branchConfigRepository.save(config);
+
+        eventPublisher.publishEvent(new BranchConfigChangedEvent(
+                branchId,
+                config.getConfigKey(),
+                oldValue,
+                dto.getConfigValue(),
+                userId
+        ));
 
         return branchConfigMapper.toResponseDTO(updatedConfig);
     }

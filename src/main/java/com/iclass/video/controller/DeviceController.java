@@ -5,6 +5,7 @@ import com.iclass.video.dto.request.device.CreateDeviceDTO;
 import com.iclass.video.dto.request.device.DeviceAssignAreaDTO;
 import com.iclass.video.dto.request.device.UpdateDeviceDTO;
 import com.iclass.video.dto.response.device.DeviceResponseDTO;
+import com.iclass.video.dto.response.device.DeviceSyncResponseDTO;
 import com.iclass.video.entity.DeviceArea;
 import com.iclass.video.security.SecurityUtils;
 import com.iclass.video.service.DeviceService;
@@ -84,9 +85,9 @@ public class DeviceController {
 
     @PostMapping("/{id}/sync")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> updateSync(@PathVariable Integer id) {
-        deviceService.updateLastSync(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<DeviceSyncResponseDTO> syncDevice(@PathVariable Integer id) {
+        DeviceSyncResponseDTO response = deviceService.syncDevice(id);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/history")

@@ -5,7 +5,10 @@ import com.iclass.video.dto.request.device.CreateDeviceDTO;
 import com.iclass.video.dto.request.device.UpdateDeviceDTO;
 import com.iclass.video.dto.response.device.DeviceAuthResponseDTO;
 import com.iclass.video.dto.response.device.DeviceResponseDTO;
+import com.iclass.video.dto.response.device.DeviceSyncResponseDTO;
 import com.iclass.video.entity.*;
+import com.iclass.video.event.DeviceDisabledEvent;
+import com.iclass.video.event.DeviceReassignedEvent;
 import com.iclass.video.repository.*;
 import com.iclass.video.entity.*;
 import com.iclass.video.exception.DeviceNotAssignedException;
@@ -17,6 +20,7 @@ import com.iclass.video.security.JwtService;
 import com.iclass.video.service.BranchConfigService;
 import com.iclass.video.service.DeviceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,6 +43,9 @@ public class DeviceServiceImpl implements DeviceService {
     private final JwtService jwtService;
     private final DeviceMapper deviceMapper;
     private final BranchConfigService branchConfigService;
+    private final DeviceSyncEventRepository deviceSyncEventRepository;
+    private final PendingSyncEventRepository pendingSyncEventRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -134,6 +141,8 @@ public class DeviceServiceImpl implements DeviceService {
 
         device.setIsActive(false);
         deviceRepository.save(device);
+
+        eventPublisher.publishEvent(new DeviceDisabledEvent(id, null));
     }
 
     @Override
@@ -148,12 +157,15 @@ public class DeviceServiceImpl implements DeviceService {
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", adminUserId));
 
-        deviceAreaRepository.findCurrentAssignment(id)
-                .ifPresent(currentAssignment -> {
-                    currentAssignment.setRemovedAt(LocalDateTime.now());
-                    currentAssignment.setRemovedBy(admin);
-                    deviceAreaRepository.save(currentAssignment);
-                });
+        DeviceArea currentAssignment = deviceAreaRepository
+                .findCurrentAssignment(id)
+                .orElseThrow(() -> new DeviceNotAssignedException(id));
+
+        Integer oldAreaId = currentAssignment.getArea().getId();
+
+        currentAssignment.setRemovedAt(LocalDateTime.now());
+        currentAssignment.setRemovedBy(admin);
+        deviceAreaRepository.save(currentAssignment);
 
         DeviceArea newAssignment = DeviceArea.builder()
                 .device(device)
@@ -163,6 +175,13 @@ public class DeviceServiceImpl implements DeviceService {
                 .build();
 
         deviceAreaRepository.save(newAssignment);
+
+        eventPublisher.publishEvent(new DeviceReassignedEvent(
+                id,
+                oldAreaId,
+                dto.getAreaId(),
+                adminUserId
+        ));
     }
 
     @Override
@@ -190,12 +209,52 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     @Transactional
-    public void updateLastSync(Integer id) {
+    public DeviceSyncResponseDTO syncDevice(Integer id) {
         Device device = deviceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dispositivo", id));
 
+        DeviceArea currentAssignment = deviceAreaRepository
+                .findCurrentAssignment(id)
+                .orElseThrow(() -> new DeviceNotAssignedException(id));
+
+        Integer branchId = currentAssignment.getArea().getBranch().getId();
+        Integer areaId = currentAssignment.getArea().getId();
+
+        Long lastEventId = deviceSyncEventRepository.findLastProcessedEventId(id).orElse(0L);
+
+        List<PendingSyncEvent> pendingEvents = pendingSyncEventRepository.findPendingEventsForDevice(
+                lastEventId,
+                id,
+                branchId,
+                areaId
+        );
+
+        pendingEvents.forEach(event -> {
+            DeviceSyncEvent deviceSyncEvent = DeviceSyncEvent.builder()
+                    .device(device)
+                    .event(event)
+                    .build();
+            deviceSyncEventRepository.save(deviceSyncEvent);
+        });
+
+        Integer volume = branchConfigService.getConfigValueAsInt(branchId, "device.default.volume");
+        Integer syncInterval = branchConfigService.getConfigValueAsInt(branchId, "device.sync.interval.seconds");
+        Boolean autoPlay = branchConfigService.getConfigValueAsBoolean(branchId, "device.auto.play");
+        Boolean loopPlaylist = branchConfigService.getConfigValueAsBoolean(branchId, "device.loop.playlist");
+
+        List<AreaVideo> areaVideos = areaVideoRepository.findByAreaWithVideos(areaId);
+
         device.setLastSync(LocalDateTime.now());
         deviceRepository.save(device);
+
+        return deviceMapper.toSyncResponseDTO(
+                areaVideos,
+                volume,
+                syncInterval,
+                autoPlay,
+                loopPlaylist,
+                pendingEvents
+        );
     }
 
     @Override

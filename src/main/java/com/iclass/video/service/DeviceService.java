@@ -5,6 +5,7 @@ import com.iclass.video.dto.request.device.CreateDeviceDTO;
 import com.iclass.video.dto.request.device.UpdateDeviceDTO;
 import com.iclass.video.dto.response.device.DeviceAuthResponseDTO;
 import com.iclass.video.dto.response.device.DeviceResponseDTO;
+import com.iclass.video.dto.response.device.DeviceSyncResponseDTO;
 import com.iclass.video.entity.DeviceArea;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public interface DeviceService {
 
     void reassign(Integer id, DeviceAssignAreaDTO dto, Integer adminUserId);
     List<DeviceArea> getHistory(Integer id);
-    void updateLastSync(Integer id);
+    DeviceSyncResponseDTO syncDevice(Integer id);
 
     DeviceAuthResponseDTO login(String deviceUsername, String devicePassword);
     void resetPassword(Integer id, String newPassword);

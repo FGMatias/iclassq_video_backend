@@ -3,6 +3,7 @@ package com.iclass.video.repository;
 import com.iclass.video.entity.DeviceArea;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,4 +30,16 @@ public interface DeviceAreaRepository extends JpaRepository<DeviceArea, Integer>
             "WHERE da.area.id = :areaId " +
             "ORDER BY da.assignedAt DESC")
     List<DeviceArea> findByAreaIdOrderByAssignedAtDesc(Integer areaId);
+
+    @Query("SELECT da.device.id FROM DeviceArea da " +
+            "WHERE da.area.branch.id = :branchId " +
+            "AND da.isCurrent = true " +
+            "AND da.removedAt IS NULL")
+    List<Integer> findCurrentDevicesByBranchId(@Param("branchId") Integer branchId);
+
+    @Query("SELECT da.device.id FROM DeviceArea da " +
+            "WHERE da.area.id = :areaId " +
+            "AND da.isCurrent = true " +
+            "AND da.removedAt IS NULL")
+    List<Integer> findCurrentDevicesByAreaId(@Param("areaId") Integer areaId);
 }
